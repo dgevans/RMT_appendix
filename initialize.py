@@ -58,9 +58,6 @@ def initializeFunctions(Para):
     #Initializing using deterministic stationary equilibrium but using interest rates comming from FB
     S = Para.P.shape[0]
     cFB,_ = computeFB(Para)
-    lFB = (cFB+Para.g)/Para.theta
-    ucFB = Para.U.uc(cFB,lFB,Para)
-    EucFB = Para.P.dot(ucFB)
 
     Q = np.zeros((S*S,S*S)) #full (s_,s) transition matrix
     for s_ in range(0,S):
@@ -76,7 +73,9 @@ def initializeFunctions(Para):
             x = Para.xgrid[i]
             def stationaryRoot(c):
                 l = (c+Para.g)/Para.theta
-                return c*Para.U.uc(c,l,Para)+l*Para.U.ul(c,l,Para)+(Para.beta-ucFB/(EucFB[s_]))*x
+                Uc = Para.U.uc(c,l,Para)
+                EUc = Para.P[s_,:].dot(Uc)
+                return c*Para.U.uc(c,l,Para)+l*Para.U.ul(c,l,Para)+(Para.beta-Uc/(EUc))*x
             res = root(stationaryRoot,cFB) #find root that holds x constant
             if not res.success:
                 raise Exception(res.message)#find root that holds x constant
@@ -85,13 +84,17 @@ def initializeFunctions(Para):
             if Para.transfers:
                 for s in range(0,S):
                     c[i,s_,s] = min(c[i,s_,s],cFB[s])#if you can achieve FB do it
-                    #Compute xprime from implementability constraint
-                    l = (c[i,s_,s]+Para.g[s])/Para.theta
-                    xprime[i,s_,s] = (c[i,s_,s]*Para.U.uc(c[i,s_,s],l,Para)+l*Para.U.ul(c[i,s_,s],l,Para)-x*ucFB[s]/EucFB[s_])/Para.beta
+                    
+                #Compute xprime from implementability constraint
+                l = (c[i,s_,:]+Para.g)/Para.theta
+                Uc = Para.U.uc(c[i,s_,:],l,Para)
+                EUc = Para.P[s_,:].dot(Uc)
+                xprime[i,s_,:] = (c[i,s_,:]*Para.U.uc(c[i,s_,:],l,Para)+l*Para.U.ul(c[i,s_,:],l,Para)-x*Uc/EUc)/Para.beta
+                
             l = (c[i,s_,:]+Para.g)/Para.theta
             u[s_,:] = Para.U.u(c[i,s_,:],l,Para)
         for s_ in range(0,S):
-            beta = (Para.P[s_,:]*Para.beta).sum()
+            beta = Para.beta
             #compute Value using transition matricies.  Gives rough guess on value function
             v = np.linalg.solve(np.eye(S*S) - beta*Q,u.reshape(S*S))
             V[i,s_] = Para.P[s_,:].dot(v[s_*S:(s_+1)*S])
@@ -101,7 +104,7 @@ def initializeFunctions(Para):
     c_policy = {}
     xprime_policy = {}
     for s_ in range(0,S):
-        beta = (Para.P[s_,:]*Para.beta).sum()
+        beta = Para.beta
         Vf.append(ValueFunctionSpline(Para.xgrid,V[:,s_],[1],Para.sigma,beta))
         for s in range(0,S):
             c_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,c[:,s_,s],[1])
