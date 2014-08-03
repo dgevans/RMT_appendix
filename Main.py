@@ -4,8 +4,8 @@ import numpy as np
 import bellman
 import initialize
 from parameters import UCES
-from parameters import UQL
 import matplotlib.pyplot as plt
+import cPickle as pickle
 
     
 """SETUP: This section creates an instance of the parameter class that holds the
@@ -14,14 +14,15 @@ primitives of the model - Preferences, Technology and details about the approxim
 
 Para = parameters() # Creates an instance of the parameter class. For details see module parameter.py
 
-Para.g = [.1,.15] # Grid for expenditure shocks
+Para.g = [.1,.15,.2] # Grid for expenditure shocks
 Para.theta = 1. # labor productivity
-Para.P = np.ones((2,2))/2 #Transition matrix for the Markov process on g 
-Para.U = UQL # utility specification. For other choices see parameter.py 
-Para.beta = 0.95 # Discount factor
-Para.sigma = 0. # risk aversion. This is redundant for quasi-linear preferences
+Para.P = np.ones((3,3))/3 #Transition matrix for the Markov process on g 
+#Para.P==[[.8,.2],[.2,.8]]
+Para.U = UCES# utility specification. For other choices see parameter.py 
+Para.beta = 0.96 # Discount factor
+Para.sigma = 2. # risk aversion. This is redundant for quasi-linear preferences
 Para.gamma = 2.# inverse Frish elasticity of labor
-Para.nx = 100 # number of grid points on the grid for x
+Para.nx = 50# number of grid points on the grid for x
 Para.transfers = True#Flag that indicates whether to solve the model with or without Transfers#
 
 
@@ -30,11 +31,11 @@ Para.transfers = True#Flag that indicates whether to solve the model with or wit
 A good initial guess is obtained using the Lucas Stokey allocation associated with every (x,s) in the state space"""
 
 #Setup grid and initialize value function. 
-Para.xmax=None
+Para.xmax=3
 Para.xmin=None
 Para = initialize.setupGrid(Para)
 # Initialize with LS solution. This also creates the basis for splines that will store the approximations for V(x,s) and policy rules
-Vf,c_policy,xprime_policy = initialize.initializeFunctions(Para)
+Vf,c_policy,xprime_policy = initialize.initializeWithCM(Para)
 
 
 
@@ -48,7 +49,7 @@ coef_old = np.zeros((Para.nx,S))
 for s in range(0,S):
     coef_old[:,s] = Vf[s].getCoeffs()
 
-Nmax = 150
+Nmax = 200
 
 diff = []
 for i in range(0,Nmax):
@@ -64,25 +65,29 @@ for i in range(0,Nmax):
 """SIMULATIONS: Here we use the solution for V(x,s) and associated policy rules to generate a sample path for 
 taxes, debt and state variables (x_t,s_t)"""
 
-T=100000
+T=80000
 xHist,cHist,sHist = bellman.simulate(0.,T,xprime_policy,c_policy,Para)
 lHist = (cHist+[Para.g[sHist[i]] for i in range(T)])/(Para.theta)
 ucHist = Para.U.uc(cHist,lHist,Para)
 ulHist = Para.U.ul(cHist,lHist,Para)
-
+t=100
 tauHist=1+ulHist/(Para.theta*ucHist)
 bHist=xHist/ucHist
 
 plt.figure()
-plt.plot(tauHist,'k')
+plt.plot(tauHist[t:],'k')
 plt.title('Tax rates')
 plt.xlabel('t')
 plt.ylabel(r'$\tau$')
 plt.savefig('taxes.png',dpi=300)
     
 plt.figure()
-plt.plot(bHist,'k')
+plt.plot(bHist[t:],'k')
 plt.title('debt')
 plt.xlabel('t')
 plt.ylabel(r'$b$')
 plt.savefig('debt.png',dpi=300)
+
+dataSimulation=xHist,cHist,sHist,tauHist,bHist
+with open('dataSimulation_riskaversion_3shocks.dat', 'wb') as f:
+    pickle.dump(dataSimulation , f)

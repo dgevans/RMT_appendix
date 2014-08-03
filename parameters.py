@@ -114,6 +114,8 @@ class parameters(object):
     xmax = 2.0 #Default bounds on the state space#
 
     nx = 20 #Number of grid points#
+    
+    k=1 # order of grid
 
     transfers = False #Flag that indicates whether to solve the model with or without Transfers#
     

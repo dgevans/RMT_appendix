@@ -70,7 +70,7 @@ def initializeFunctions(Para):
     for i in range(0,Para.nx):
         u = np.zeros((S,S))
         for s_ in range(0,S):
-            x = Para.xgrid[i]
+            x = Para.xgrid[i]            
             def stationaryRoot(c):
                 l = (c+Para.g)/Para.theta
                 Uc = Para.U.uc(c,l,Para)
@@ -120,8 +120,12 @@ def initializeWithCM(Para):
     #Initializing using deterministic stationary equilibrium but using interest rates comming from FB
     S = Para.P.shape[0]
     beta = Para.beta
-    P = Para.P    
-    
+    P = Para.P
+    k=Para.k    
+    cFB,_ = computeFB(Para)
+    lFB = (cFB+Para.g)/Para.theta  
+    Para.cFB=cFB
+    Para.lFB=lFB
     c = np.zeros((Para.nx,S,S))
     xprime = np.zeros((Para.nx,S,S))
     V = np.zeros((Para.nx,S))
@@ -131,18 +135,28 @@ def initializeWithCM(Para):
             cLS,lLS = LS.solveLucasStockey(x,s_,Para)
             uLS = Para.U.u(cLS,lLS,Para)
             V[i,s_] = P[s_,:].dot(np.linalg.solve(np.eye(S)-(Para.beta*P.T).T,uLS))
+            V[i,s_]=min(V[i,s_],P[s_,:].dot(np.linalg.solve(np.eye(S)-(Para.beta*P.T).T,Para.U.u(cFB,lFB,Para))))
             xprime[i,s_,:] = x
             c[i,s_,:] = cLS
-    
+            if Para.transfers:
+                for s in range(0,S):
+                    c[i,s_,s] = min(c[i,s_,s],cFB[s])#if you can achieve FB do it                    
+                    #Compute xprime from implementability constraint
+                    l = (c[i,s_,:]+Para.g)/Para.theta
+                    Uc = Para.U.uc(c[i,s_,:],l,Para)
+                    EUc = Para.P[s_,:].dot(Uc)
+                    xprime[i,s_,:] = (c[i,s_,:]*Para.U.uc(c[i,s_,:],l,Para)+l*Para.U.ul(c[i,s_,:],l,Para)-x*Uc/EUc)/Para.beta
+                    l = (c[i,s_,:]+Para.g)/Para.theta                    
+                    V[i,s_] = P[s_,:].dot(np.linalg.solve(np.eye(S)-(Para.beta*P.T).T,Para.U.u(c[i,s_,:],l,Para)))                   
     #Fit functions using splines.  Linear for policies as they can be wonky
     Vf = []
     c_policy = {}
     xprime_policy = {}
     for s_ in range(0,S):
         beta = (Para.P[s_,:]*Para.beta).sum() # Anmol: why s this necessary?
-        Vf.append(ValueFunctionSpline(Para.xgrid,V[:,s_],2,Para.sigma,beta))
+        Vf.append(ValueFunctionSpline(Para.xgrid,V[:,s_],k,Para.sigma,beta))
         for s in range(0,S):
-            c_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,c[:,s_,s],2)
-            xprime_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,xprime[:,s_,s],2)
+            c_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,c[:,s_,s],k)
+            xprime_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,xprime[:,s_,s],k)
 
     return Vf,c_policy,xprime_policy
