@@ -69,9 +69,9 @@ def findPolicies(x_s_,Vf,c_policy,xprime_policy,Para,z0=None):
             z0[s] = c_policy[(s_,s)](x)
             z0[S+s] = xprime_policy[(s_,s)](x)
     if Para.transfers == False:
-        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-8,iter=1000)
+        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
     else:
-        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-8,iter=1000)
+        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
     if imode != 0:
         print x_s_
         raise Exception(smode)
@@ -103,10 +103,10 @@ def fitPolicies(policies,Vf,c_policy,xprime_policy,Para):
     policies = [policies[i:i+Para.nx] for i in range(0,len(policies),Para.nx)] #split policies up into groups by S
     for s_ in range(0,S):
         [c_new,xprime_new,V_new] = zip(*policies[s_]) #unzip the list of tuples into the c,xprime policies and associated values
-        Vf[s_].fit(Para.xgrid,np.hstack(V_new)[:],2)
+        Vf[s_].fit(Para.xgrid,np.hstack(V_new)[:],1)
         for s in range(0,S):
-            c_policy[(s_,s)].fit(Para.xgrid,np.vstack(c_new)[:,s],2) #vstack is used here because c_new is really a list of arrays
-            xprime_policy[(s_,s)].fit(Para.xgrid,np.vstack(xprime_new)[:,s],2)
+            c_policy[(s_,s)].fit(Para.xgrid,np.vstack(c_new)[:,s],1) #vstack is used here because c_new is really a list of arrays
+            xprime_policy[(s_,s)].fit(Para.xgrid,np.vstack(xprime_new)[:,s],1)
 
     return Vf,c_policy,xprime_policy
 

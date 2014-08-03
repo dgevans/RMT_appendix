@@ -19,7 +19,7 @@ Para.theta = 1. # labor productivity
 Para.P = np.ones((2,2))/2 #Transition matrix for the Markov process on g 
 Para.U = UQL # utility specification. For other choices see parameter.py 
 Para.beta = 0.95 # Discount factor
-Para.sigma = 2. # risk aversion. This is redundant for quasi-linear preferences
+Para.sigma = 0. # risk aversion. This is redundant for quasi-linear preferences
 Para.gamma = 2.# inverse Frish elasticity of labor
 Para.nx = 100 # number of grid points on the grid for x
 Para.transfers = True#Flag that indicates whether to solve the model with or without Transfers#
@@ -30,11 +30,11 @@ Para.transfers = True#Flag that indicates whether to solve the model with or wit
 A good initial guess is obtained using the Lucas Stokey allocation associated with every (x,s) in the state space"""
 
 #Setup grid and initialize value function. 
-Para.xmax=3
-Para.xmin=-4
+Para.xmax=None
+Para.xmin=None
 Para = initialize.setupGrid(Para)
 # Initialize with LS solution. This also creates the basis for splines that will store the approximations for V(x,s) and policy rules
-Vf,c_policy,xprime_policy = initialize.initializeWithCM(Para)
+Vf,c_policy,xprime_policy = initialize.initializeFunctions(Para)
 
 
 

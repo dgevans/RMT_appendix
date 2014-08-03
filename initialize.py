@@ -105,10 +105,10 @@ def initializeFunctions(Para):
     xprime_policy = {}
     for s_ in range(0,S):
         beta = Para.beta
-        Vf.append(ValueFunctionSpline(Para.xgrid,V[:,s_],[1],Para.sigma,beta))
+        Vf.append(ValueFunctionSpline(Para.xgrid,V[:,s_],[2],Para.sigma,beta))
         for s in range(0,S):
-            c_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,c[:,s_,s],[1])
-            xprime_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,xprime[:,s_,s],[1])
+            c_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,c[:,s_,s],[2])
+            xprime_policy[(s_,s)] = PolicyRulesSpline(Para.xgrid,xprime[:,s_,s],[2])
 
     return Vf,c_policy,xprime_policy
     
