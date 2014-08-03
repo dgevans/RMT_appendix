@@ -1,7 +1,9 @@
 __author__ = 'dgevans'
+
 import numpy as np
 
 class UQL(object):
+    """Utility is quasilinear in consumption and CES in labor"""
     @staticmethod
     def u(c,l,Para):
         gamma = Para.gamma
@@ -24,6 +26,7 @@ class UQL(object):
         return -Para.gamma*l**(Para.gamma-1)
 
 class UCES(object):
+    """Utility is separable and CES in both consumption and labor"""
     @staticmethod
     def u(c,l,Para):
         sigma = Para.sigma
@@ -51,6 +54,7 @@ class UCES(object):
         return -Para.gamma*l**(Para.gamma-1)
 
 class UCES_AMSS(object):
+    """Utility specification used in AMSS paper, consistent with BGP"""
     @staticmethod
     def u(c,l,Para):
         sigma_1 = Para.sigma_1
@@ -87,37 +91,38 @@ class UCES_AMSS(object):
 
 
 class parameters(object):
-
+    """This class holds the primitives of the model"""
     def __init__(self):
         pass
 
-    sigma = 2.0
+    sigma = 2.0 #Risk Aversion"
 
-    gamma = 2.0
+    gamma = 2.0 #Curvature on distutility of labor"
 
-    theta = 1.0
+    theta = 1.0 #Labor productivity#
 
-    g = [.1,.2]
+    g = [.1,.2] #grid for expedniture shocks#
 
-    beta = 0.9
+    beta = 0.9 #time discount factor#
 
-    U = UCES
+    U = UCES #type of preferences#
 
-    P = np.array([[0.5,0.5],[0.5,0.5]])
+    P = np.array([[0.5,0.5],[0.5,0.5]]) #Transition Matrix#
 
-    xmin = -2.0
+    xmin = -2.0 #Default bounds on the state space#
 
-    xmax = 2.0
+    xmax = 2.0 #Default bounds on the state space#
 
-    nx = 20
+    nx = 20 #Number of grid points#
 
-    cloud = False
+    transfers = False #Flag that indicates whether to solve the model with or without Transfers#
     
-    transfers = False
-    
-    port = None
+    port = None #Payoff structure on the bond - none imples risk free bond#
 
     def I(self,c,l):
+        '''
+        Marginal utility adjusted post tax income. This comes handy to write and analyze the imp. constraints
+        '''
         return c*self.U.uc(c,l,self)+l*self.U.ul(c,l,self)
 
 

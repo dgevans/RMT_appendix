@@ -3,12 +3,7 @@ import numpy as np
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import fmin_slsqp
 from parameters import DictWrap
-import multiprocessing
-from multiprocessing import Pool
 from functools import partial
-import itertools
-from mpi4py import MPI
-import sys
 
 #Holds value function truly it actually fits the certain consumption equivalent as that will be closer to linear
 class ValueFunctionSpline:
@@ -43,6 +38,24 @@ class ValueFunctionSpline:
         raise Exception('Error: d must equal None or 1')
 
 
+class PolicyRulesSpline:
+    def __init__(self,X,y,k):
+        self.f = UnivariateSpline(X,y,k=k,s=0)
+
+    def fit(self,X,y,k):         
+        self.f = UnivariateSpline(X,y,k=k,s=0)#.fit(X,y,k)
+
+    def getCoeffs(self):
+        return self.f.get_coeffs()
+
+    def __call__(self,X,d = None):
+        if d==None:
+            return self.f(X)
+        if d==1:
+            return self.f(X,1)
+        raise Exception('Error: d must equal None or 1')
+
+
 #for a given state x and s_ solves value function problem. returns polcies and objective
 def findPolicies(x_s_,Vf,c_policy,xprime_policy,Para,z0=None):
     S = Para.P.shape[0]
@@ -73,37 +86,13 @@ def findPoliciesOnGrid(x_s_grid,Vf,c_policy,xprime_policy,Para,ncpu=None):
     return map(findPolicies_partial,x_s_grid)
 
 
-def iterateBellmanLocally(Vf,c_policy,xprime_policy,Para):
+def iterateBellman(Vf,c_policy,xprime_policy,Para):
     """
-     Iterates the bellman equation locally returns policy function Vf,c_policy,xprime_policy
+     Iterates the bellman equation  returns policy function Vf,c_policy,xprime_policy
     """
     policies = findPoliciesOnGrid(Para.domain,Vf,c_policy,xprime_policy,Para,ncpu=1)
 
     return fitPolicies(policies,Vf,c_policy,xprime_policy,Para)
-
-
-def iterateBellmanMPI(Vf,c_policy,xprime_policy,Para):
-
-    w = MPI.COMM_WORLD
-    s = w.Get_size()
-    rank = w.Get_rank()
-    n = len(Para.domain)
-    m = n/s
-    r = n%s
-
-    mydomain = Para.domain[rank*m+min(rank,r):(rank+1)*m+min(rank+1,r)]
-    findPolicies_partial = partial(findPolicies,Vf=Vf,c_policy=c_policy,xprime_policy=xprime_policy,Para=Para)
-    mypolicies = map(findPolicies_partial,mydomain)
-
-    chunked_policies = w.gather(mypolicies,root=0) #gather all the policies at master
-    if rank == 0:
-        policies = list(itertools.chain.from_iterable(chunked_policies))
-        policyFunctions = fitPolicies(policies,Vf,c_policy,xprime_policy,Para) #have master fit policy functions
-    else:
-        policyFunctions = []
-
-    return w.bcast(policyFunctions,root=0) #send the fit back to rest of group
-
 
 
 def fitPolicies(policies,Vf,c_policy,xprime_policy,Para):
@@ -217,13 +206,14 @@ def impConJac(z,V,Para,state):
                       ,JacXprime)) #derivative w.r.t xprime
 
 
-def simulate(x0,T,xprime_policy,Para):
+def simulate(x0,T,xprime_policy,c_policy,Para):
     """
     Simulates starting from x0 given xprime_policy for T periods.  Returns sequence of xprimes and shocks
     """
     S = Para.P.shape[0]
     xHist = np.zeros(T)
     sHist = np.zeros(T,dtype=np.int)
+    cHist=np.ones(T)
     xHist[0] = x0
     cumP = np.cumsum(Para.P,axis=1)
     for t in range(1,T):
@@ -234,22 +224,6 @@ def simulate(x0,T,xprime_policy,Para):
                 sHist[t] = s
                 break
         xHist[t] = xprime_policy[(s_,s)](xHist[t-1])
+        cHist[t]=c_policy[s_,s](xHist[t])
 
-    return xHist,sHist
-
-def fitNewPolicies(xgrid,Vf,c_policy,xprime_policy,Para):
-    """
-    Fits new policies locally on a larger xgrid
-    """
-    S = Para.P.shape[0]
-    Para.xgrid = xgrid
-    Para.nx = xgrid.shape[0]
-    xDomain = np.kron(np.ones(S),Para.xgrid) #stack Para.xgrid S times
-    s_Domain = np.kron(range(0,S),np.ones(Para.nx,dtype=np.int)) #s assciated with each grid
-    Para.domain = zip(xDomain,s_Domain)#zip them together so we have something that looks like
-    _,c_policy,xprime_policy =iterateBellmanMPI(Vf,c_policy,xprime_policy,Para)
-    return c_policy,xprime_policy
-    
-
-
-
+    return xHist,cHist,sHist
