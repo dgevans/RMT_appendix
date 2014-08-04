@@ -72,6 +72,10 @@ def findPolicies(x_s_,Vf,c_policy,xprime_policy,Para,z0=None):
         (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
     else:
         (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+        if imode != 0:
+            (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+        #(policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,policy,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+
     if imode != 0:
         print x_s_
         raise Exception(smode)
@@ -100,13 +104,17 @@ def fitPolicies(policies,Vf,c_policy,xprime_policy,Para):
     Given the new policies fits a new value function and policy functions.
     """
     S = Para.P.shape[0]
+    cFB,lFB=Para.cFB,Para.lFB    
+    
     policies = [policies[i:i+Para.nx] for i in range(0,len(policies),Para.nx)] #split policies up into groups by S
     for s_ in range(0,S):
-        [c_new,xprime_new,V_new] = zip(*policies[s_]) #unzip the list of tuples into the c,xprime policies and associated values
-        Vf[s_].fit(Para.xgrid,np.hstack(V_new)[:],1)
+        VFB=Para.P[s_,:].dot(np.linalg.solve(np.eye(S)-(Para.beta*Para.P.T).T,Para.U.u(cFB,lFB,Para)))
+        [c_new,xprime_new,V_new] = zip(*policies[s_])#unzip the list of tuples into the c,xprime policies and associated values        
+        V_new=np.minimum(list(V_new),VFB*np.ones(len(list(V_new))))        
+        Vf[s_].fit(Para.xgrid,np.hstack(V_new)[:],Para.k)
         for s in range(0,S):
-            c_policy[(s_,s)].fit(Para.xgrid,np.vstack(c_new)[:,s],1) #vstack is used here because c_new is really a list of arrays
-            xprime_policy[(s_,s)].fit(Para.xgrid,np.vstack(xprime_new)[:,s],1)
+            c_policy[(s_,s)].fit(Para.xgrid,np.vstack(c_new)[:,s],Para.k) #vstack is used here because c_new is really a list of arrays
+            xprime_policy[(s_,s)].fit(Para.xgrid,np.vstack(xprime_new)[:,s],Para.k)
 
     return Vf,c_policy,xprime_policy
 
@@ -120,14 +128,18 @@ def objectiveFunction(z,V,Para,state):
     S = P.shape[0]
 
     c = z[0:S]
-    l = (c+Para.g)/Para.theta
-    xprime = z[S:2*S]
-    Vprime = np.zeros(S)
+    if min(c)>0:
+        l = (c+Para.g)/Para.theta
+        xprime = z[S:2*S]
+        Vprime = np.zeros(S)
 
-    for s in range(0,S):
-        Vprime[s] = V[s](xprime[s])
+        for s in range(0,S):
+            Vprime[s] = V[s](xprime[s])
 
-    return -np.dot(P[state.s,:], u(c,l,Para) + Para.beta*Vprime )
+        return -np.dot(P[state.s,:], u(c,l,Para) + Para.beta*Vprime )
+    else:
+        return 100+abs(min(c))*10
+        
 
 def objectiveFunctionJac(z,V,Para,state):
     """
@@ -137,7 +149,7 @@ def objectiveFunctionJac(z,V,Para,state):
 
     S = P.shape[0]
 
-    c = z[0:S]
+    c = z[0:S]    
     l = (c+Para.g)/Para.theta
     xprime = z[S:2*S]
     dVprime = np.zeros(S)
@@ -215,6 +227,7 @@ def simulate(x0,T,xprime_policy,c_policy,Para):
     sHist = np.zeros(T,dtype=np.int)
     cHist=np.ones(T)
     xHist[0] = x0
+    np.random.set_state=9175446457
     cumP = np.cumsum(Para.P,axis=1)
     for t in range(1,T):
         r = np.random.uniform()
