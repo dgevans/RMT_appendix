@@ -128,7 +128,7 @@ def initializeWithCM(Para):
     beta = Para.beta
     P = Para.P
     k=Para.k    
-    cFB,_ = computeFB(Para)
+    cFB,_,_ = computeFB(Para)
     lFB = (cFB+Para.g)/Para.theta  
     Para.cFB=cFB
     Para.lFB=lFB
