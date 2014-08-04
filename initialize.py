@@ -33,11 +33,13 @@ def computeFB(Para):
 
     EucFB = Para.P.dot(ucFB)
     xFB = IFB/(ucFB/EucFB-Para.beta) #compute x needed to attain FB while keeping x constant
-    return cFB,xFB
+    uFB = Para.U.u(cFB,lFB,Para)
+    VFB = np.linalg.inv(np.eye(len(uFB))-Para.beta*Para.P).dot(uFB)
+    return cFB,xFB,VFB
 
 
 def setupGrid(Para):
-    cFB,xFB = computeFB(Para)
+    cFB,xFB,_ = computeFB(Para)
     if Para.xmin == None:
         Para.xmin = min(xFB) #below xmin FB can be acheived
 
@@ -57,7 +59,9 @@ def setupGrid(Para):
 def initializeFunctions(Para):
     #Initializing using deterministic stationary equilibrium but using interest rates comming from FB
     S = Para.P.shape[0]
-    cFB,_ = computeFB(Para)
+    cFB,lFB,_ = computeFB(Para)
+    ucFB = Para.U.uc(cFB,lFB,Para)
+    EucFB = Para.P.dot(ucFB)
 
     Q = np.zeros((S*S,S*S)) #full (s_,s) transition matrix
     for s_ in range(0,S):
@@ -75,13 +79,15 @@ def initializeFunctions(Para):
                 l = (c+Para.g)/Para.theta
                 Uc = Para.U.uc(c,l,Para)
                 EUc = Para.P[s_,:].dot(Uc)
-                return c*Para.U.uc(c,l,Para)+l*Para.U.ul(c,l,Para)+(Para.beta-Uc/(EUc))*x
+                return c*Para.U.uc(c,l,Para)+l*Para.U.ul(c,l,Para)+(Para.beta-ucFB/(EucFB[s_]))*x
             res = root(stationaryRoot,cFB) #find root that holds x constant
             if not res.success:
-                raise Exception(res.message)#find root that holds x constant
+                res = root(stationaryRoot,c[i-1,s_,:])
+                if not res.success:
+                    raise Exception(res.message)#find root that holds x constant
             c[i,s_,:] =res.x
             xprime[i,:] = x*np.ones(S)
-            if Para.transfers:
+            if Para.transfers and x < 0:
                 for s in range(0,S):
                     c[i,s_,s] = min(c[i,s_,s],cFB[s])#if you can achieve FB do it
                     
@@ -89,7 +95,7 @@ def initializeFunctions(Para):
                 l = (c[i,s_,:]+Para.g)/Para.theta
                 Uc = Para.U.uc(c[i,s_,:],l,Para)
                 EUc = Para.P[s_,:].dot(Uc)
-                xprime[i,s_,:] = (c[i,s_,:]*Para.U.uc(c[i,s_,:],l,Para)+l*Para.U.ul(c[i,s_,:],l,Para)-x*Uc/EUc)/Para.beta
+                xprime[i,s_,:] = (c[i,s_,:]*Para.U.uc(c[i,s_,:],l,Para)+l*Para.U.ul(c[i,s_,:],l,Para)-x*ucFB/EucFB[s_])/Para.beta
                 
             l = (c[i,s_,:]+Para.g)/Para.theta
             u[s_,:] = Para.U.u(c[i,s_,:],l,Para)
