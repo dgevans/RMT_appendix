@@ -110,7 +110,7 @@ def fitPolicies(policies,Vf,c_policy,xprime_policy,Para):
     for s_ in range(0,S):
         VFB=Para.P[s_,:].dot(np.linalg.solve(np.eye(S)-(Para.beta*Para.P.T).T,Para.U.u(cFB,lFB,Para)))
         [c_new,xprime_new,V_new] = zip(*policies[s_])#unzip the list of tuples into the c,xprime policies and associated values        
-        V_new=np.minimum(list(V_new),VFB*np.ones(len(list(V_new))))        
+        #V_new=np.minimum(list(V_new),VFB*np.ones(len(list(V_new))))        
         Vf[s_].fit(Para.xgrid,np.hstack(V_new)[:],Para.k)
         for s in range(0,S):
             c_policy[(s_,s)].fit(Para.xgrid,np.vstack(c_new)[:,s],Para.k) #vstack is used here because c_new is really a list of arrays
@@ -240,3 +240,38 @@ def simulate(x0,T,xprime_policy,c_policy,Para):
         cHist[t]=c_policy[s_,s](xHist[t])
 
     return xHist,cHist,sHist
+    
+def solveTime0Problem(b0,s0,Vf,Para):
+    '''
+    Solves the time 0 problem given initial debt b0 and stat s0
+    '''
+    def impCon(z):
+        beta = Para.beta
+        c,xprime = z
+        l = ((c+Para.g)/Para.theta)[s0]
+        uc = Para.U.uc(c,l,Para)
+        ul = Para.U.ul(c,l,Para)
+        
+        return c*uc + l*ul + beta*xprime - uc*b0
+    
+    def obj(z):
+        beta = Para.beta
+        c,xprime = z
+        l = ((c+Para.g)/Para.theta)[s0]
+        u = Para.U.u(c,l,Para)
+        return -(u + beta*Vf[s0](xprime))
+    
+    z0 = [(Para.theta*0.5-Para.g)[0],0.]
+    S = len(Para.P)
+    bounds = [Para.bounds[0],Para.bounds[S]]
+    if Para.transfers == False:
+        (policy,minusv,_,imode,smode) = fmin_slsqp(obj,z0,f_eqcons=impCon,bounds=bounds,iprint=False,full_output=True,acc=1e-9,iter=1000)
+    else:
+        (policy,minusv,_,imode,smode) = fmin_slsqp(obj,z0,f_ieqcons=impCon,bounds=bounds,iprint=False,full_output=True,acc=1e-9,iter=1000)
+        if imode != 0:
+            (policy,minusv,_,imode,smode) = fmin_slsqp(obj,z0,f_eqcons=impCon,bounds=bounds,iprint=False,full_output=True,acc=1e-9,iter=1000)
+        #(policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,policy,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+    if imode != 0:
+        raise Exception(smode)
+    
+    return policy

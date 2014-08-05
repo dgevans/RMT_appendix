@@ -60,6 +60,8 @@ def initializeFunctions(Para):
     #Initializing using deterministic stationary equilibrium but using interest rates comming from FB
     S = Para.P.shape[0]
     cFB,lFB,_ = computeFB(Para)
+    Para.cFB = cFB
+    Para.lFB = lFB
     ucFB = Para.U.uc(cFB,lFB,Para)
     EucFB = Para.P.dot(ucFB)
 
