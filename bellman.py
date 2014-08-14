@@ -69,11 +69,11 @@ def findPolicies(x_s_,Vf,c_policy,xprime_policy,Para,z0=None):
             z0[s] = c_policy[(s_,s)](x)
             z0[S+s] = xprime_policy[(s_,s)](x)
     if Para.transfers == False:
-        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-8,iter=1000)
     else:
-        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+        (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-8,iter=1000)
         if imode != 0:
-            (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
+            (policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,z0,f_eqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_eqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-8,iter=1000)
         #(policy,minusv,_,imode,smode) = fmin_slsqp(objectiveFunction,policy,f_ieqcons=impCon,bounds=bounds,fprime=objectiveFunctionJac,fprime_ieqcons=impConJac,args=(Vf,Para,state),iprint=False,full_output=True,acc=1e-9,iter=1000)
 
     if imode != 0:
@@ -247,7 +247,8 @@ def solveTime0Problem(b0,s0,Vf,Para):
     '''
     def impCon(z):
         beta = Para.beta
-        c,xprime = z
+        c=z[0]
+        xprime=z[1]
         l = ((c+Para.g)/Para.theta)[s0]
         uc = Para.U.uc(c,l,Para)
         ul = Para.U.ul(c,l,Para)
@@ -256,13 +257,14 @@ def solveTime0Problem(b0,s0,Vf,Para):
     
     def obj(z):
         beta = Para.beta
-        c,xprime = z
+        c=z[0]
+        xprime=z[1]
         l = ((c+Para.g)/Para.theta)[s0]
         u = Para.U.u(c,l,Para)
         return -(u + beta*Vf[s0](xprime))
-    
-    z0 = [(Para.theta*0.5-Para.g)[0],0.]
     S = len(Para.P)
+    
+    z0 = np.array([.1,0])
     bounds = [Para.bounds[0],Para.bounds[S]]
     if Para.transfers == False:
         (policy,minusv,_,imode,smode) = fmin_slsqp(obj,z0,f_eqcons=impCon,bounds=bounds,iprint=False,full_output=True,acc=1e-9,iter=1000)
