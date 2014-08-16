@@ -120,6 +120,8 @@ class parameters(object):
     transfers = False #Flag that indicates whether to solve the model with or without Transfers#
     
     port = None #Payoff structure on the bond - none imples risk free bond#
+    
+    storeFileName='dataSimulations'
 
     def I(self,c,l):
         '''
