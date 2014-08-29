@@ -13,6 +13,34 @@ import math
 data_riskaversion_2shocks = pickle.load( open( 'dataSimulation_ra_2shocks.dat', "rb" ) )    
 data_ql_2shocks = pickle.load( open( 'dataSimulation_ql.dat', "rb" ) )    
 
+PolicyRules_ra_2shocks=pickle.load( open( 'dataPolicyRules_ra_2shocks.dat', "rb" ) )    
+PolicyRules_ql_2shocks=pickle.load( open( 'dataPolicyRules_ql_2shocks.dat', "rb" ) )    
+
+_,_,xprime_policy_ql,Para_ql=PolicyRules_ql_2shocks
+_,_,xprime_policy_ra,Para_ra=PolicyRules_ra_2shocks
+
+s_=1
+f,(ax1,ax2) =plt.subplots(2,1)
+
+ax1.plot(Para_ra.xgrid, map(xprime_policy_ra[s_,0],Para_ra.xgrid)-Para_ra.xgrid,color='k',linewidth=2)
+ax1.hold    
+ax1.plot(Para_ra.xgrid, map(xprime_policy_ra[s_,1],Para_ra.xgrid)-Para_ra.xgrid,color='k',linewidth=2,linestyle='--')
+
+
+ax2.plot(Para_ql.xgrid, map(xprime_policy_ql[s_,0],Para_ql.xgrid)-Para_ql.xgrid,color='k',linewidth=2)
+ax2.hold    
+ax2.plot(Para_ql.xgrid, map(xprime_policy_ql[s_,1],Para_ql.xgrid)-Para_ql.xgrid,color='k',linewidth=2,linestyle='--')
+
+#plt.hold
+#plt.plot(Para.xgrid, map(xprime_policy[s_,2],Para.xgrid)-Para.xgrid,'-k')
+#plt.title('x_prime')
+
+#plt.legend(['g(s)=g_l','g(s)=g_h'])
+ax1.set_title('x''(s)-x: RA')
+ax2.set_title('x''(s)-x: QL')
+
+plt.tight_layout()
+plt.savefig('x_prime_policy.eps',dpi=300)
 
 
 xHist_riskaversion_2shocks,_,_,tauHist_riskaversion_2shocks,bHist_riskaversion_2shocks,para_ra_2shocks=data_riskaversion_2shocks

@@ -19,11 +19,11 @@ Para.P = np.ones((2,2))/2 #Transition matrix for the Markov process on g
 #Para.P==[[.8,.2],[.2,.8]]
 Para.U = UCES# utility specification. For other choices see parameter.py 
 Para.beta = 0.96 # Discount factor
-Para.sigma = 1.5 # risk aversion. This is redundant for quasi-linear preferences
+Para.sigma = 0 # risk aversion. This is redundant for quasi-linear preferences
 Para.gamma = 2.# inverse Frish elasticity of labor
 Para.nx = 200# number of grid points on the grid for x
 Para.transfers = True#Flag that indicates whether to solve the model with or without Transfers#
-Para.storeFileName=['dataSimulation_ra_2shocks.dat','dataPolicyRules_ra_2shocks.dat']
+Para.storeFileName=['dataSimulation_ql_2shocks.dat','dataPolicyRules_ql_2shocks.dat']
 
 
 """INITILIZATION: Here we initialize the continuation value function V(x,s). 
@@ -61,21 +61,11 @@ for i in range(0,Nmax):
 
 
 
+
+
+
 """SIMULATIONS: Here we use the solution for V(x,s) and associated policy rules to generate a sample path for 
 taxes, debt and state variables (x_t,s_t)"""
-
-s_=1
-plt.figure()
-plt.plot(Para.xgrid, map(xprime_policy[s_,0],Para.xgrid)-Para.xgrid,color='k',linewidth=2)
-plt.hold    
-plt.plot(Para.xgrid, map(xprime_policy[s_,1],Para.xgrid)-Para.xgrid,color='k',linewidth=2,linestyle='--')
-#plt.hold
-#plt.plot(Para.xgrid, map(xprime_policy[s_,2],Para.xgrid)-Para.xgrid,'-k')
-#plt.title('x_prime')
-plt.xlabel(r'$x$')
-plt.ylabel(r'$x\'(s)-x$')
-#plt.legend(['g(s)=g_l','g(s)=g_h'])
-plt.savefig('x_prime_policy_ra.eps',dpi=300)
 
 
 
